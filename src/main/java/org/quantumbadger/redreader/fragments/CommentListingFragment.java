@@ -323,11 +323,12 @@ public class CommentListingFragment extends RRFragment
 
 		if(item.isComment()) {
 			final RedditRenderableComment comment = item.asComment();
+			final boolean nowCollapsed = !comment.isCollapsed(changeDataManager);
 
 			changeDataManager.markHidden(
 					TimestampUTC.now(),
 					comment.getIdAndType(),
-					!comment.isCollapsed(changeDataManager));
+					nowCollapsed);
 
 			mCommentListingManager.updateHiddenStatus();
 
@@ -337,6 +338,10 @@ public class CommentListingFragment extends RRFragment
 
 			if(position == layoutManager.findFirstVisibleItemPosition()) {
 				layoutManager.scrollToPositionWithOffset(position, 0);
+			}
+
+			if(nowCollapsed && position != RecyclerView.NO_POSITION) {
+				focusNextComment(position);
 			}
 		}
 	}
@@ -824,6 +829,29 @@ public class CommentListingFragment extends RRFragment
 		) {
 			if(isTopLevelComment(pos)) {
 				jumpToPosition(pos);
+				return;
+			}
+		}
+	}
+
+	// Moves accessibility focus without scrolling: the next comment is
+	// already on screen, directly below the newly collapsed one.
+	private void focusNextComment(final int startingPosition) {
+		final LinearLayoutManager layoutManager
+				= (LinearLayoutManager)mRecyclerView.getLayoutManager();
+
+		for(
+			int pos = startingPosition + 1;
+			pos < layoutManager.getItemCount();
+			pos++
+		) {
+			final GroupedRecyclerViewAdapter.Item item
+					= mCommentListingManager.getItemAtPosition(pos);
+
+			if(item instanceof RedditCommentListItem
+					&& ((RedditCommentListItem)item).isComment()) {
+				mParentJumpCount++;
+				setAccessibilityFocusAfterLayout(pos, true);
 				return;
 			}
 		}
